@@ -1,10 +1,6 @@
 <?php
-/** @noinspection PhpDefineCanBeReplacedWithConstInspection */
 
-define('MODX_BASE_PATH', dirname(dirname(dirname(dirname(dirname(__FILE__))))) . '/');
-define('MODX_CORE_PATH', MODX_BASE_PATH . 'core/');
-
-return [
+$config = [
     'package' => [
         'name' => 'MyWarehouse',
         'version' => '0.0.1',
@@ -19,3 +15,8 @@ return [
         'chunks' => true,
     ],
 ];
+
+/* ------- Вычисляемые свойства конфига (НЕ ТРОГАТЬ!!!) ------- */
+$config['package']['name_lower'] = strtolower($config['package']['name']);
+
+return $config;

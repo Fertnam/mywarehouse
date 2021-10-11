@@ -1,51 +1,19 @@
 <?php
 
+require_once 'builder.paths.php';
+
 /**
  * Class Builder
- *
- * @property modx $modx
- * @property modPackageBuilder $builder
- * @property modCategory $category
- * @property array $categoryAttrs
- * @property array $snippets
- * @property array $settings
- * @property array $config
  */
 class Builder {
     private modX $modx;
     private modPackageBuilder $builder;
     private modCategory $category;
     private array $categoryAttrs;
-    private array $snippets;
-    private array $settings;
     private array $config;
-
-    private function __construct() {
-        $this->initConfig();
-        $this->initModx();
-        $this->initBuilder();
-        $this->initCategory();
-        $this->initSnippets();
-        $this->initSystemSettings();
-        $this->pack();
-    }
 
     private function initConfig(): void {
         $this->config = require 'builder.config.php';
-        $this->config['package']['name_lower'] = strtolower($this->config['package']['name']);
-
-        // Пути
-        $root = dirname(dirname(dirname(__FILE__))) . '/';
-        $build = $root . '_build/';
-        $core = $root . 'core/components/' . $this->config['package']['name_lower'] . '/';
-
-        $this->config['path'] = [
-            'root' => $root,
-            'build' => $build,
-            'data' => $build . 'data/',
-            'core' => $core,
-            'docs' => $core . 'docs/',
-        ];
     }
 
     private function initModx(): void {
@@ -84,6 +52,7 @@ class Builder {
             xPDOTransport::RELATED_OBJECTS => true,
         ];
 
+        /** @noinspection PhpFieldAssignmentTypeMismatchInspection */
         $this->category = $this->modx->newObject('modCategory');
         $this->category->set('category', $this->config['package']['name']);
 
@@ -99,21 +68,19 @@ class Builder {
 
         $snippets = [];
 
-        /** @noinspection PhpIncludeInspection */
-        $tmp = include $this->config['path']['data'] . 'transport.snippets.php';
+        $tmp = include COMPONENT_DATA_PATH . 'transport.snippets.php';
 
         foreach ($tmp as $k => $v) {
             /**
              * @var modSnippet $snippet
-             * @var modX $modx
              */
             $snippet = $this->modx->newObject('modSnippet');
 
             //Содержимое сниппета
-            $snippetContent = file_get_contents($this->config['path']['core'] . 'elements/snippets/' . $v['file']);
+            $snippetContent = file_get_contents(COMPONENT_CORE_PATH . 'elements/snippets/' . $v['file']);
 
             //Удаление тега php
-            preg_match('#\<\?php(.*)#is', $snippetContent, $data);
+            preg_match('#<\?php(.*)#is', $snippetContent, $data);
             $snippetContent = $data[1];
 
             $snippet->fromArray([
@@ -146,8 +113,7 @@ class Builder {
 
         $settings = [];
 
-        /** @noinspection PhpIncludeInspection */
-        $tmp = include $this->config['path']['data'] . 'transport.settings.php';
+        $tmp = include COMPONENT_DATA_PATH . 'transport.settings.php';
 
         foreach ($tmp as $k => $v) {
             /**
@@ -184,7 +150,7 @@ class Builder {
 
         $vehicle->resolve('file',
             [
-                'source' => $this->config['path']['core'],
+                'source' => COMPONENT_CORE_PATH,
                 'target' => "return MODX_CORE_PATH . 'components/';"
             ]
         );
@@ -193,9 +159,9 @@ class Builder {
 
         $this->builder->setPackageAttributes(
             [
-                'changelog' => file_get_contents($this->config['path']['docs'] . 'changelog.txt'),
-                'license' => file_get_contents($this->config['path']['docs'] . 'license.txt'),
-                'readme' => file_get_contents($this->config['path']['docs'] . 'readme.txt'),
+                'changelog' => file_get_contents(COMPONENT_DOCS_PATH . 'changelog.txt'),
+                'license' => file_get_contents(COMPONENT_DOCS_PATH . 'license.txt'),
+                'readme' => file_get_contents(COMPONENT_DOCS_PATH . 'readme.txt'),
             ]
         );
 
@@ -206,7 +172,13 @@ class Builder {
         }
     }
 
-    public static function process(): self {
-        return new self;
+    public function __invoke(): void {
+        $this->initConfig();
+        $this->initModx();
+        $this->initBuilder();
+        $this->initCategory();
+        $this->initSnippets();
+        $this->initSystemSettings();
+        $this->pack();
     }
 }

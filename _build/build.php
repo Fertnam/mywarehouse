@@ -1,5 +1,6 @@
 <?php
 
-include 'includes/builder.class.php';
+require_once 'includes/builder.class.php';
 
-Builder::process();
+$builder = new Builder;
+$builder();
