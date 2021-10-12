@@ -1,8 +1,8 @@
 <?php
 
 return [
-    'hellSnippet' => [
-        'file' => 'hell.snippet.php',
-        'description' => 'HEEEEELL',
+    'mwProducts' => [
+        'file' => 'mwProducts.snippet.php',
+        'description' => 'Product Cards',
     ]
 ];

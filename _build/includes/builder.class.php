@@ -5,18 +5,21 @@ require_once 'builder.paths.php';
 /**
  * Class Builder
  */
-class Builder {
+class Builder
+{
     private modX $modx;
     private modPackageBuilder $builder;
     private modCategory $category;
     private array $categoryAttrs;
     private array $config;
 
-    private function initConfig(): void {
+    private function initConfig(): void
+    {
         $this->config = require 'builder.config.php';
     }
 
-    private function initModx(): void {
+    private function initModx(): void
+    {
         require_once MODX_CORE_PATH . 'model/modx/modx.class.php';
 
         $this->modx = new modX();
@@ -26,7 +29,8 @@ class Builder {
         $this->modx->setLogTarget(XPDO_CLI_MODE ? 'ECHO' : 'HTML');
     }
 
-    private function initBuilder(): void {
+    private function initBuilder(): void
+    {
         $this->modx->loadClass('transport.modPackageBuilder', '', false, true);
 
         $this->builder = new modPackageBuilder($this->modx);
@@ -44,7 +48,8 @@ class Builder {
         );
     }
 
-    private function initCategory(): void {
+    private function initCategory(): void
+    {
         $this->categoryAttrs = [
             xPDOTransport::UNIQUE_KEY => 'category',
             xPDOTransport::PRESERVE_KEYS => false,
@@ -52,17 +57,22 @@ class Builder {
             xPDOTransport::RELATED_OBJECTS => true,
         ];
 
-        /** @noinspection PhpFieldAssignmentTypeMismatchInspection */
-        $this->category = $this->modx->newObject('modCategory');
-        $this->category->set('category', $this->config['package']['name']);
+        /**
+         * @var modCategory $category
+         */
+        $category = $this->modx->newObject('modCategory');
+        $category->set('category', $this->config['package']['name']);
+
+        $this->category = $category;
 
         $this->modx->log(modx::LOG_LEVEL_INFO, 'Создана категория: ' . $this->config['package']['name']);
     }
 
-    private function initSnippets(): void {
-        $this->categoryAttrs[xPDOTransport::RELATED_OBJECT_ATTRIBUTES]['Snippet'] = [
+    private function initSnippets(): void
+    {
+        $this->categoryAttrs[xPDOTransport::RELATED_OBJECT_ATTRIBUTES]['Snippets'] = [
             xPDOTransport::PRESERVE_KEYS => false,
-            xPDOTransport::UPDATE_OBJECT => true,
+            xPDOTransport::UPDATE_OBJECT => $this->config['update']['snippets'],
             xPDOTransport::UNIQUE_KEY => 'name',
         ];
 
@@ -96,15 +106,47 @@ class Builder {
             $snippets[] = $snippet;
         }
 
-        if (is_array($snippets)) {
-            $this->category->addMany($snippets);
-            $this->modx->log(modx::LOG_LEVEL_INFO, 'Собрано сниппетов: ' . count($snippets));
-        } else {
-            $this->modx->log(modx::LOG_LEVEL_ERROR, 'Возникла ошибка при сборке сниппетов');
-        }
+        $this->category->addMany($snippets);
+        $this->modx->log(modx::LOG_LEVEL_INFO, 'Собрано сниппетов: ' . count($snippets));
     }
 
-    private function initSystemSettings(): void {
+    private function initChunks(): void
+    {
+        $this->categoryAttrs[xPDOTransport::RELATED_OBJECT_ATTRIBUTES]['Chunks'] = [
+            xPDOTransport::PRESERVE_KEYS => false,
+            xPDOTransport::UPDATE_OBJECT => $this->config['update']['chunks'],
+            xPDOTransport::UNIQUE_KEY => 'name',
+        ];
+
+        $chunks = [];
+
+        $tmp = include COMPONENT_DATA_PATH . 'transport.chunks.php';
+
+        foreach ($tmp as $k => $v) {
+            /**
+             * @var modChunk $chunk
+             */
+            $chunk = $this->modx->newObject('modChunk');
+
+            $chunk->fromArray([
+                'id' => 0,
+                'name' => $k,
+                'description' => $v['description'],
+                'snippet' => file_get_contents(COMPONENT_CORE_PATH . 'elements/chunks/' . $v['file']),
+                'static' => $this->config['static']['chunks'],
+                'source' => 1,
+                'static_file' => 'core/components/' . $this->config['package']['name_lower'] . '/elements/chunks/' . $v['file']
+            ], '', true, true);
+
+            $chunks[] = $chunk;
+        }
+
+        $this->category->addMany($chunks);
+        $this->modx->log(modx::LOG_LEVEL_INFO, 'Собрано чанков: ' . count($chunks));
+    }
+
+    private function initSystemSettings(): void
+    {
         $attrs = [
             xPDOTransport::UNIQUE_KEY => 'key',
             xPDOTransport::PRESERVE_KEYS => true,
@@ -118,7 +160,6 @@ class Builder {
         foreach ($tmp as $k => $v) {
             /**
              * @var modSystemSetting $setting
-             * @var modX $modx
              */
             $setting = $this->modx->newObject('modSystemSetting');
 
@@ -133,19 +174,16 @@ class Builder {
             $settings[] = $setting;
         }
 
-        if (is_array($settings)) {
-            foreach ($settings as $setting) {
-                $vehicle = $this->builder->createVehicle($setting, $attrs);
-                $this->builder->putVehicle($vehicle);
-            }
-
-            $this->modx->log(modx::LOG_LEVEL_INFO, 'Собрано системных настроек: ' . count($settings));
-        } else {
-            $this->modx->log(modx::LOG_LEVEL_ERROR, 'Возникла ошибка при сборке системных настроек');
+        foreach ($settings as $setting) {
+            $vehicle = $this->builder->createVehicle($setting, $attrs);
+            $this->builder->putVehicle($vehicle);
         }
+
+        $this->modx->log(modx::LOG_LEVEL_INFO, 'Собрано системных настроек: ' . count($settings));
     }
 
-    private function pack(): void {
+    private function pack(): void
+    {
         $vehicle = $this->builder->createVehicle($this->category, $this->categoryAttrs);
 
         $vehicle->resolve('file',
@@ -172,12 +210,14 @@ class Builder {
         }
     }
 
-    public function __invoke(): void {
+    public function __invoke(): void
+    {
         $this->initConfig();
         $this->initModx();
         $this->initBuilder();
         $this->initCategory();
         $this->initSnippets();
+        $this->initChunks();
         $this->initSystemSettings();
         $this->pack();
     }
