@@ -1,8 +1,8 @@
 <?php
 
 return [
-    'product' => [
-        'file' => 'product.chunk.tpl',
+    'mwProduct' => [
+        'file' => 'chunk.mw_product.tpl',
         'description' => 'Product Card Chunk',
     ]
 ];

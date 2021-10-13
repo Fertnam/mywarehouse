@@ -2,7 +2,7 @@
 
 return [
     'mwProducts' => [
-        'file' => 'mwProducts.snippet.php',
+        'file' => 'snippet.mw_products.php',
         'description' => 'Product Cards',
     ]
 ];

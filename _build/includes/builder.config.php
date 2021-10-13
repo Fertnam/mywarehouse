@@ -8,7 +8,7 @@ $config = [
     ],
     'static' => [
         'snippets' => true,
-        'chunks' => false,
+        'chunks' => true,
     ],
     'update' => [
         'snippets' => true,
