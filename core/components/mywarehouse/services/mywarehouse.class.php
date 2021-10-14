@@ -2,7 +2,8 @@
 
 class MyWarehouse
 {
-    public function getProducts(): array {
+    public function getProducts(): array
+    {
         return [
             [
                 'name' => 'Жигуль',
